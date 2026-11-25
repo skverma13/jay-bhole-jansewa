@@ -147,14 +147,34 @@ else if(['split','merge','compress','watermark','editor','organizer','lock','unl
   }
 }
 else if(t==='jpgpdf'){
-  open('JPG to PDF',fileInput(true,'image/jpeg,image/png,image/webp')+'<button class="action" id="go">Convert to PDF</button><div class="result" id="result"></div>','Images browser mein hi PDF mein badli jayengi. PDF library load hone ke liye internet zaroori hai.');
-  $('#go').onclick=async()=>{
-    const fs=[...$('#file').files];
-    if(!fs.length)return result('Pehle JPG ya PNG image select karein.');
-    if(!window.PDFLib)return result('PDF library load nahi hui. Internet check karke Ctrl+F5 dabayein.');
+  open('JPG to PDF',
+    '<div class="field"><label>एक-एक करके फोटो / दस्तावेज़ जोड़ें</label><input class="file" id="oneimage" type="file" accept="image/jpeg,image/png,image/webp"></div>'+
+    '<button class="action" id="addimage">Add Document / दस्तावेज़ जोड़ें</button>'+
+    '<div id="imagelist" class="result">अभी कोई फोटो नहीं जोड़ी गई है।</div>'+
+    '<button class="action" id="makepdf">Convert to PDF / PDF बनाएँ</button>',
+    'एक बार में एक फोटो चुनें, Add Document दबाएँ। इसी तरह अगली फोटो जोड़ें। सभी फोटो एक ही PDF में आएँगी।');
+  let chosenImages=[];
+  const showImages=()=>{
+    const list=$('#imagelist');list.innerHTML='';
+    if(!chosenImages.length){list.textContent='अभी कोई फोटो नहीं जोड़ी गई है।';return;}
+    chosenImages.forEach((f,i)=>{
+      const row=document.createElement('div');row.style='display:flex;justify-content:space-between;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #ddd';
+      const name=document.createElement('span');name.textContent=(i+1)+'. '+f.name;name.style='overflow-wrap:anywhere';
+      const del=document.createElement('button');del.className='action';del.textContent='हटाएँ';del.onclick=()=>{chosenImages.splice(i,1);showImages()};
+      row.append(name,del);list.appendChild(row);
+    });
+  };
+  $('#addimage').onclick=()=>{
+    const f=$('#oneimage').files[0];
+    if(!f)return result('पहले एक फोटो चुनें।');
+    chosenImages.push(f);$('#oneimage').value='';showImages();
+  };
+  $('#makepdf').onclick=async()=>{
+    if(!chosenImages.length)return result('पहले एक-एक करके फोटो जोड़ें।');
+    if(!window.PDFLib)return result('PDF library load नहीं हुई। Internet check करके Ctrl+F5 दबाएँ।');
     try{
       const {PDFDocument}=PDFLib;const pdf=await PDFDocument.create();
-      for(const f of fs){
+      for(const f of chosenImages){
         const bytes=await f.arrayBuffer();let img;
         if(f.type==='image/png')img=await pdf.embedPng(bytes);
         else if(f.type==='image/jpeg')img=await pdf.embedJpg(bytes);
@@ -166,8 +186,8 @@ else if(t==='jpgpdf'){
         }
         const page=pdf.addPage([img.width,img.height]);page.drawImage(img,{x:0,y:0,width:img.width,height:img.height});
       }
-      downloadPdf(await pdf.save(),'images-to-pdf.pdf');result('PDF ban gaya! Downloads folder mein images-to-pdf.pdf dekhein.');
-    }catch(e){result('Conversion nahi ho paya. JPG/PNG image dobara select karein.');}
+      downloadPdf(await pdf.save(),'images-to-pdf.pdf');result('PDF बन गई! Downloads folder में images-to-pdf.pdf देखें।');
+    }catch(e){result('Conversion नहीं हो पाया। JPG/PNG फोटो दोबारा चुनें।');}
   };
 }
 else if(['pvc','multi','whatsapp','passport','resize','signature','print'].includes(t)){
